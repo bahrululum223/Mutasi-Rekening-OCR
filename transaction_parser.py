@@ -352,6 +352,207 @@ def parse_bni_scan(text):
     return rows
 
 
+
+# Universal fallback helpers. These heuristics intentionally flag uncertain rows for review.
+DATE_TOKEN = r"(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}\s+[A-Za-zÀ-ÿ]{3,12}\s+\d{2,4})"
+DATE_LINE_RE = re.compile(r"^\s*(" + DATE_TOKEN + r")\b\s*(.*)$", re.I)
+AMOUNT_RE = re.compile(r"(?<![\w/])(?:\(?-?\s*(?:\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:[.,]\d{1,6})?\)?)(?:\s*(?:DB|DR|CR|D|C))?(?!\w)", re.I)
+MONTHS = {
+    "JAN":1,"JANUARI":1,"JANUARY":1,"FEB":2,"FEBRUARI":2,"FEBRUARY":2,
+    "MAR":3,"MARET":3,"MARCH":3,"APR":4,"APRIL":4,"MEI":5,"MAY":5,
+    "JUN":6,"JUNI":6,"JUNE":6,"JUL":7,"JULI":7,"JULY":7,"AGU":8,
+    "AGUSTUS":8,"AUG":8,"AUGUST":8,"SEP":9,"SEPT":9,"SEPTEMBER":9,
+    "OCT":10,"OKT":10,"OKTOBER":10,"OCTOBER":10,"NOV":11,"NOVEMBER":11,
+    "DEC":12,"DES":12,"DESEMBER":12,"DECEMBER":12
+}
+
+def _parse_flexible_date(raw, year_hint):
+    value = re.sub(r"\s+", " ", (raw or "").strip().strip(":"))
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%d/%m/%Y", "%d-%m-%Y",
+                "%m/%d/%Y", "%d.%m.%Y", "%d/%m/%y", "%d-%m-%y", "%d.%m.%y"):
+        try:
+            return datetime.strptime(value, fmt).date().isoformat()
+        except ValueError:
+            pass
+    m = re.fullmatch(r"(\d{1,2})\s+([A-Za-zÀ-ÿ]+)\s+(\d{2,4})", value, re.I)
+    if m:
+        month = MONTHS.get(m.group(2).upper())
+        if month:
+            yr = int(m.group(3)); yr += 2000 if yr < 100 else 0
+            try: return date(yr, month, int(m.group(1))).isoformat()
+            except ValueError: pass
+    m = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})", value)
+    if m:
+        a, b = map(int, m.groups())
+        # Prefer day/month for Indonesian bank statements; ambiguity is flagged downstream.
+        try: return date(year_hint, b, a).isoformat()
+        except ValueError: pass
+    return value
+
+def _parse_flexible_amount(token):
+    """Parse common Indonesian/international amounts without rounding."""
+    raw = re.sub(r"\s+", "", str(token or "")).upper()
+    suffix = ""
+    m = re.search(r"(DB|DR|CR|D|C)$", raw)
+    if m:
+        suffix = m.group(1); raw = raw[:m.start()]
+    negative = raw.startswith("(") and raw.endswith(")")
+    raw = raw.strip("()")
+    if raw.startswith("-"):
+        negative = True
+    raw = raw.lstrip("+-")
+    if not raw or not re.search(r"\d", raw): return None, suffix
+    raw = re.sub(r"[^0-9,.]", "", raw)
+    if "," in raw and "." in raw:
+        # Last separator is decimal separator when followed by 1-2 digits;
+        # otherwise separators are treated as thousands separators.
+        if raw.rfind(",") > raw.rfind("."):
+            raw = raw.replace(".", "").replace(",", ".")
+        else:
+            raw = raw.replace(",", "")
+    elif "," in raw:
+        parts = raw.split(",")
+        if len(parts[-1]) in (1, 2) and len(parts) == 2:
+            raw = parts[0].replace(".", "") + "." + parts[1]
+        elif len(parts[-1]) == 3:
+            raw = "".join(parts)
+        else:
+            raw = "".join(parts[:-1]) + ("." + parts[-1] if len(parts[-1]) <= 2 else parts[-1])
+    elif raw.count(".") > 1:
+        parts = raw.split(".")
+        if len(parts[-1]) in (1, 2):
+            raw = "".join(parts[:-1]) + "." + parts[-1]
+        else:
+            raw = "".join(parts)
+    elif "." in raw:
+        left, right = raw.rsplit(".", 1)
+        if len(right) == 3 and left.isdigit():
+            raw = left + right
+    try:
+        val = float(raw)
+        if negative or suffix in ("DB", "DR", "D"): val = abs(val)
+        return val, suffix
+    except ValueError:
+        return None, suffix
+
+def _header_kind(line):
+    u = line.upper()
+    if not re.search(r"\b(TANGGAL|DATE|TGL|TRANSACTION DATE|POSTING DATE)\b", u): return None
+    if not re.search(r"\b(KETERANGAN|DESCRIPTION|URAIAN|DETAIL|TRANSAKSI|MUTASI|DEBIT|DEBET|KREDIT|CREDIT|BALANCE|SALDO|AMOUNT|JUMLAH)\b", u): return None
+    return {
+        "debit": bool(re.search(r"\b(DEBIT|DEBET|DB|WITHDRAWAL|OUT)\b", u)),
+        "credit": bool(re.search(r"\b(CREDIT|KREDIT|CR|DEPOSIT|IN)\b", u)),
+        "balance": bool(re.search(r"\b(BALANCE|SALDO)\b", u)),
+        "amount": bool(re.search(r"\b(AMOUNT|JUMLAH|MUTASI)\b", u)),
+    }
+
+def parse_universal(text, year):
+    """Bank-agnostic fallback for date-led transaction rows and common text tables."""
+    rows, current = [], None
+    header_seen = False
+    header_flags = {"debit": False, "credit": False, "balance": False, "amount": False}
+    skip_re = re.compile(
+        r"^(TANGGAL|TGL|DATE|DESCRIPTION|KETERANGAN|URAIAN|SALDO|BALANCE|DEBIT|DEBET|KREDIT|CREDIT|"
+        r"MUTASI REKENING|ACCOUNT|REKENING|NO\.?\s*REKENING|PERIODE|PERIOD|CURRENCY|MATA UANG|"
+        r"HALAMAN|PAGE|OPENING BALANCE|CLOSING BALANCE|SALDO AWAL|SALDO AKHIR|TOTAL|SUBTOTAL|"
+        r"BERSAMBUNG|CATATAN|STATEMENT)\b", re.I)
+
+    def finish(item):
+        if not item: return
+        raw = " ".join(item["lines"]).strip()
+        if not raw: return
+        # Strip repeating page headers/footers and keep all non-numeric description material.
+        amounts = []
+        for match in AMOUNT_RE.finditer(raw):
+            token = match.group(0).strip()
+            value, suffix = _parse_flexible_amount(token)
+            if value is not None:
+                amounts.append((match.start(), match.end(), value, suffix, token))
+        if not amounts and not item["date"]:
+            return
+        description = raw
+        for start, end, _, _, _ in reversed(amounts):
+            description = description[:start] + " " + description[end:]
+        description = re.sub(r"\b(?:DB|DR|CR)\b", " ", description, flags=re.I)
+        description = re.sub(r"\s+", " ", description).strip(" -|:;")
+        if skip_re.match(description): return
+
+        debit = credit = balance = None
+        review = "Perlu diperiksa"
+        if len(amounts) >= 3 and header_flags["debit"] and header_flags["credit"]:
+            # Table has distinct debit and credit columns; use last three values cautiously.
+            debit, credit, balance = amounts[-3][2], amounts[-2][2], amounts[-1][2]
+            debit = debit or None; credit = credit or None
+        elif len(amounts) >= 2:
+            txn = amounts[-2]
+            balance = amounts[-1][2]
+            value, suffix = txn[2], txn[3]
+            upper = raw.upper()
+            if suffix in ("DB", "DR", "D") or re.search(r"\b(DEBIT|DEBET|WITHDRAWAL|PAYMENT|TRANSFER OUT|PURCHASE|BIAYA|TARIK TUNAI|MONTHLY FEE|ADMIN FEE)\b", upper):
+                debit = value
+            elif suffix in ("CR", "C") or re.search(r"\b(CREDIT|KREDIT|DEPOSIT|TRANSFER IN|INCOMING|SETORAN|BUNGA|REFUND|SALARY|GAJI|PENERIMAAN)\b", upper):
+                credit = value
+            else:
+                # No reliable debit/credit indicator: keep the value in the likely column only
+                # when the header provides a clear cue; otherwise require human review.
+                if header_flags["debit"] and not header_flags["credit"]: debit = value
+                elif header_flags["credit"] and not header_flags["debit"]: credit = value
+                else: debit = value
+        elif len(amounts) == 1:
+            value, suffix = amounts[0][2], amounts[0][3]
+            if suffix in ("CR", "C"): credit = value
+            else: debit = value
+
+        if not description: description = "(deskripsi tidak terbaca)"
+        if debit is not None or credit is not None:
+            review = "Perlu diperiksa"
+        if not amounts:
+            review = "Perlu diperiksa: nominal tidak terbaca"
+        rows.append({
+            "Date": _parse_flexible_date(item["date"], year),
+            "Description": description,
+            "Debit": debit,
+            "Credit": credit,
+            "Balance": balance,
+            "Review": review
+        })
+
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line: continue
+        flags = _header_kind(line)
+        if flags:
+            header_seen = True
+            for key, value in flags.items():
+                header_flags[key] = header_flags[key] or value
+            continue
+        if skip_re.match(line):
+            continue
+        match = DATE_LINE_RE.match(line)
+        if match:
+            d, rest = match.groups()
+            # Avoid treating reference numbers or dates inside prose as transaction starts.
+            parsed_date = _parse_flexible_date(d, year)
+            if re.match(r"^\d{4}-\d{1,2}-\d{1,2}$", parsed_date) or re.match(r"^\d{1,2}[-/]\d{1,2}", d) or re.match(r"^\d{1,2}\s+[A-Za-zÀ-ÿ]+", d):
+                if current: finish(current)
+                current = {"date": d, "lines": [rest] if rest else []}
+                continue
+        if current:
+            # Do not append recurring headers/footers; multiline descriptions are common.
+            if not skip_re.match(line) and not re.fullmatch(r"\d+\s*/\s*\d+", line):
+                current["lines"].append(line)
+    if current: finish(current)
+
+    # Deduplicate adjacent OCR repeats conservatively.
+    deduped = []
+    seen = set()
+    for row in rows:
+        key = (row["Date"], row["Description"], row["Debit"], row["Credit"], row["Balance"])
+        if key not in seen:
+            deduped.append(row); seen.add(key)
+    return deduped
+
+
 def parse_transactions(text, filepath=None):
     year = statement_year(text)
     rows = []
@@ -372,7 +573,13 @@ def parse_transactions(text, filepath=None):
         except Exception:
             rows = []
     if not rows:
-        rows = parse_generic(text, year)
+        rows = parse_universal(text, year)
+    # Universal parser is also a secondary recovery path if a bank-specific parser
+    # found only a small fragment of a longer statement.
+    if rows and len(rows) < 2 and len(re.findall(DATE_TOKEN, text, re.I)) >= 2:
+        recovered = parse_universal(text, year)
+        if len(recovered) > len(rows):
+            rows = recovered
 
     summary = {
         "count": len([r for r in rows if r.get("Description") != "SALDO AWAL"]),

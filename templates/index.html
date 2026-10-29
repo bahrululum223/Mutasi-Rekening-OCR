@@ -153,54 +153,46 @@ async function save(cb){
   });
   data.set('reviewed',cb.checked?'yes':'no');
   try {
-    const response=await fetch(f.action.split('#')[0], {
-      method:'POST', body:data, credentials:'same-origin',
-      headers:{'X-Requested-With':'XMLHttpRequest'}
-    });
+    const response=await fetch(f.action.split('#')[0], {method:'POST',body:data,credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}});
     if(!response.ok) throw new Error('HTTP '+response.status);
     return true;
-  } catch(error) {
-    progress.textContent='Gagal menyimpan status. Coba lagi.';
-    return false;
-  }
+  } catch(error) { progress.textContent='Gagal menyimpan status. Coba lagi.'; return false; }
+}
+function setBulkBusy(busy){bulkBusy=busy;all.disabled=busy;uncheckAllButton.disabled=busy;boxes.forEach(cb=>{cb.disabled=busy;});}
+async function bulkSetReviewed(target){
+  if(bulkBusy)return;
+  const changed=boxes.filter(cb=>cb.checked!==target);
+  if(changed.length===0){update();return;}
+  const previousStates=boxes.map(cb=>cb.checked);
+  setBulkBusy(true);
+  // Update the UI immediately, then persist all rows in a single server request.
+  boxes.forEach(cb=>{cb.checked=target;lock(cb);});
+  update();
+  progress.textContent='Menyimpan status '+(target?'diperiksa':'belum diperiksa')+' untuk '+boxes.length+' transaksi…';
+  try{
+    const response=await fetch("{{ url_for('save_reviewed_bulk') }}",{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({reviewed:target})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||!result.ok)throw new Error(result.error||('HTTP '+response.status));
+    progress.textContent=boxes.length+' / '+boxes.length+' diperiksa';
+  }catch(error){
+    // Revert to the prior visual state if the bulk save fails.
+    boxes.forEach((cb,index)=>{cb.checked=previousStates[index];lock(cb);});
+    update();
+    progress.textContent='Gagal menyimpan massal. Silakan coba lagi.';
+  }finally{setBulkBusy(false);update();}
 }
 boxes.forEach(cb=>{lock(cb);cb.addEventListener('change',async()=>{
-  lock(cb);update();
+  if(bulkBusy)return;
+  cb.disabled=true;lock(cb);update();
   const ok=await save(cb);
   if(!ok){cb.checked=!cb.checked;lock(cb);update();}
+  cb.disabled=false;
 });});
-all.addEventListener('change',async()=>{
-  if(bulkBusy)return;
-  bulkBusy=true; all.disabled=true;
-  const target=all.checked;
-  const changed=boxes.filter(cb=>cb.checked!==target);
-  progress.textContent='Menyimpan 0 / '+changed.length+'…';
-  let done=0;
-  // Save sequentially to avoid concurrent writes to the same job JSON file.
-  for(const cb of changed){
-    cb.checked=target; lock(cb); update();
-    const ok=await save(cb);
-    if(!ok){cb.checked=!target;lock(cb);}
-    done++;
-    progress.textContent='Menyimpan '+done+' / '+changed.length+'…';
-  }
-  update(); all.disabled=false; bulkBusy=false;
-});
-uncheckAllButton.addEventListener('click',async()=>{
-  if(bulkBusy)return;
-  bulkBusy=true; all.disabled=true; uncheckAllButton.disabled=true;
-  const changed=boxes.filter(cb=>cb.checked);
-  progress.textContent='Membatalkan centang 0 / '+changed.length+'…';
-  let done=0;
-  for(const cb of changed){
-    cb.checked=false; lock(cb); update();
-    const ok=await save(cb);
-    if(!ok){cb.checked=true;lock(cb);}
-    done++;
-    progress.textContent='Membatalkan centang '+done+' / '+changed.length+'…';
-  }
-  update(); all.disabled=false; uncheckAllButton.disabled=false; bulkBusy=false;
-});
+all.addEventListener('change',()=>bulkSetReviewed(all.checked));
+uncheckAllButton.addEventListener('click',()=>bulkSetReviewed(false));
 update();
 })();
 </script></div>

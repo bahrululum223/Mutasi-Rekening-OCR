@@ -110,3 +110,13 @@ Perbaikan Check all: setiap status checkbox disimpan melalui request berurutan u
 
 
 Toolbar pemeriksaan menyediakan tombol `Check all` dan `Uncheck all`. Keduanya menyimpan status per baris secara berurutan.
+
+
+### Universal parser (v39)
+- Parser fallback tidak bergantung pada satu bank atau satu nama header.
+- Mengenali beberapa pola tanggal (ISO, DD/MM/YYYY, DD-MM-YYYY, dan tanggal dengan nama bulan Indonesia/Inggris).
+- Mengenali beberapa format angka Indonesia/internasional, penanda DB/DR/CR, dan kata kunci transaksi umum.
+- Menggabungkan baris deskripsi yang berlanjut dan menghapus duplikasi OCR yang berurutan.
+- Baris yang ambigu tetap berstatus perlu diperiksa; hasil wajib dibandingkan dengan dokumen sumber sebelum dipakai sebagai data final.
+
+**Batasan:** Tidak ada parser OCR yang bisa menjamin semua format bank tanpa kesalahan. PDF teks, PDF hasil scan, kolom tanpa label, tanggal ambigu, dan layout khusus dapat memerlukan parser khusus atau koreksi manual. Untuk produksi, validasi setiap bank dan simpan contoh dokumen uji yang representatif.

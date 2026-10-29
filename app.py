@@ -309,6 +309,30 @@ def save_row(row_index):
     return redirect(url_for("index") + "#review-section")
 
 
+@app.route("/save-reviewed-bulk", methods=["POST"])
+@login_required
+def save_reviewed_bulk():
+    """Persist review checkboxes for all transactions in one request."""
+    job_id = session.get("job_id")
+    if not job_id:
+        return {"ok": False, "error": "Belum ada hasil ekstraksi untuk disimpan."}, 400
+    payload = request.get_json(silent=True) or {}
+    reviewed = payload.get("reviewed")
+    if not isinstance(reviewed, bool):
+        return {"ok": False, "error": "Status pemeriksaan tidak valid."}, 400
+    try:
+        data = read_job(job_id)
+        rows = data.get("transactions", [])
+        for row in rows:
+            row["Reviewed"] = reviewed
+        data["transactions"] = rows
+        # Review status is not included in exports, so avoid regenerating Excel/CSV.
+        save_job(job_id, data)
+        return {"ok": True, "reviewed": reviewed, "count": len(rows)}, 200
+    except (OSError, ValueError) as exc:
+        app.logger.exception("Gagal menyimpan status pemeriksaan massal")
+        return {"ok": False, "error": str(exc)}, 500
+
 @app.route("/review", methods=["GET", "POST"])
 @login_required
 def review():
