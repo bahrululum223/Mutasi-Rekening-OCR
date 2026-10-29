@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#243b8a">
+  <title>Bank Statement Reader</title>
+  <style>
+    :root{--ink:#172b3a;--muted:#617383;--line:#e2eaf0;--bg:#f4f8fa;--brand:#0f766e;--brand2:#115e59;--soft:#e8f7f4;--white:#fff;--shadow:0 12px 36px rgba(23,43,58,.07)}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .topbar{height:66px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center}.nav{max-width:1180px;width:100%;padding:0 22px;margin:auto;display:flex;align-items:center;gap:12px}.logo{height:38px;width:38px;border-radius:12px;background:var(--brand);display:grid;place-items:center;color:white;font-size:20px;font-weight:800}.brand-name{font-weight:800;letter-spacing:-.3px}.brand-sub{font-size:12px;color:var(--muted)}.nav-right{margin-left:auto;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.nav-link{color:var(--brand);font-weight:800;text-decoration:none}.logout-form{display:inline}.logout-btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 10px;font-weight:700;color:var(--ink);cursor:pointer}
+    .wrap{max-width:1180px;margin:34px auto;padding:0 22px 56px}.hero{background:linear-gradient(120deg,#123c49,#0f766e);color:#fff;padding:34px;border-radius:22px;display:flex;align-items:center;gap:24px;justify-content:space-between;box-shadow:var(--shadow)}.eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:11px;font-weight:800;color:#a7f3d0}.hero h1{font-size:clamp(27px,4vw,39px);letter-spacing:-1.2px;line-height:1.15;margin:8px 0 12px}.hero p{margin:0;color:#d8efec;max-width:650px}.hero-mark{font-size:58px;opacity:.9;flex-shrink:0}.bank-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chip{border:1px solid #ffffff42;background:#ffffff14;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}
+    .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:20px;margin-top:22px}.card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:25px;box-shadow:var(--shadow)}.card h2{font-size:19px;letter-spacing:-.4px;margin:0 0 5px}.muted{color:var(--muted);font-size:13px}.dropzone{margin-top:20px;border:1.5px dashed #9db7bf;background:#f9fcfc;border-radius:15px;padding:30px 18px;text-align:center;transition:.15s}.dropzone.dragover{background:var(--soft);border-color:var(--brand)}.upload-icon{height:50px;width:50px;border-radius:16px;background:var(--soft);color:var(--brand);display:grid;place-items:center;margin:0 auto 12px;font-size:25px}.drop-title{font-weight:800;font-size:16px}.file-input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.choose{display:inline-block;margin-top:14px;background:#fff;border:1px solid #cbd8de;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;color:var(--ink)}.file-name{margin-top:12px;color:var(--brand);font-size:13px;font-weight:700;overflow-wrap:anywhere}.primary{border:0;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;padding:13px 18px;cursor:pointer;width:100%;margin-top:16px;font-size:14px}.primary:hover{background:var(--brand2)}.primary:disabled{opacity:.55;cursor:wait}.fineprint{margin-top:14px;font-size:12px;color:var(--muted)}.steps{display:grid;gap:17px;margin-top:20px}.step{display:flex;gap:12px;align-items:flex-start}.step-num{height:32px;width:32px;border-radius:10px;background:var(--soft);color:var(--brand);font-weight:800;display:grid;place-items:center;flex-shrink:0}.step strong{display:block;font-size:14px;margin-bottom:2px}.step p{margin:0;color:var(--muted);font-size:13px}.alert{padding:13px 15px;border-radius:12px;margin-top:17px;background:#fff4d8;border:1px solid #f2dfaa;color:#77520b;font-size:13px}.results{margin-top:22px}.result-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}.result-head h2{margin:0;font-size:21px}.download-links{display:flex;gap:9px;flex-wrap:wrap}.download{display:inline-flex;gap:7px;align-items:center;background:var(--brand);color:white;text-decoration:none;border-radius:10px;padding:10px 13px;font-size:13px;font-weight:800}.download.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:19px 0}.stat{border:1px solid var(--line);border-radius:13px;padding:15px}.stat-label{font-size:12px;color:var(--muted)}.stat-value{font-size:21px;font-weight:800;letter-spacing:-.5px;margin-top:4px;overflow-wrap:anywhere}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:760px;font-size:13px}th,td{text-align:left;padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#f6f9fa;color:#506474;font-size:11px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0}tr:last-child td{border-bottom:0}tbody tr:hover{background:#f8fbfb}.money{text-align:right;font-variant-numeric:tabular-nums}#review-section input,#review-section select{font-size:12px}html{scroll-behavior:smooth}.review{color:#a15c00;font-weight:700}.ok{color:#0f766e;font-weight:700}.result-note{margin-top:13px;font-size:12px;color:var(--muted)}footer{text-align:center;color:#83919b;font-size:12px;margin-top:28px}
+    @media(max-width:760px){.wrap{margin-top:20px;padding:0 14px 38px}.hero{padding:25px 22px}.hero-mark{display:none}.grid{grid-template-columns:1fr}.card{padding:20px}.nav{padding:0 15px}.nav-right{display:flex;font-size:11px;gap:8px}.stats{grid-template-columns:1fr}.stat-value{font-size:19px}.result-head{display:block}.download-links{margin-top:15px}}
+  </style>
+
+<style>
+.transaction-table-wrap { width:100%; max-width:100%; overflow-x:hidden; }
+.transaction-table { border-collapse:collapse; width:100%; }
+.transaction-table th, .transaction-table td { padding:6px 4px; vertical-align:middle; overflow-wrap:anywhere; }
+.transaction-table input { display:block; }
+@media (max-width: 900px) {
+  .transaction-table th, .transaction-table td { padding:4px 2px; font-size:11px; }
+  .transaction-table input { padding:5px 3px !important; font-size:10px !important; }
+  .transaction-table button { padding:5px 4px !important; font-size:10px !important; }
+}
+</style>
+
+
+<style id="visual-refresh-v34">
+:root{--ink:#17213d;--muted:#69758e;--line:#e4e8f2;--bg:#f5f7fc;--brand:#4357c5;--brand2:#3043a7;--soft:#eef0ff;--white:#fff;--shadow:0 14px 42px rgba(35,48,100,.075)}
+body{background:radial-gradient(ellipse at 15% 0%,#e9edff 0,transparent 34%),var(--bg);color:var(--ink);font-family:Inter,"Segoe UI",system-ui,sans-serif}
+.topbar{height:72px;background:rgba(255,255,255,.92);border-bottom:1px solid #e4e8f2;box-shadow:0 3px 18px #26356b08;backdrop-filter:blur(12px)}
+.logo{background:linear-gradient(135deg,#5368df,#303f9f);border-radius:13px;box-shadow:0 6px 14px #4357c533}.brand-name{letter-spacing:-.55px}.brand-sub{letter-spacing:.1px}
+.wrap{max-width:1320px;margin:30px auto;padding-bottom:64px}.hero{background:linear-gradient(120deg,#202f75 0%,#4357c5 58%,#6878e3 100%);border-radius:24px;padding:clamp(25px,4vw,42px);box-shadow:0 18px 44px #3446a52b;position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:260px;height:260px;border:1px solid #ffffff24;border-radius:50%;right:70px;top:-130px;box-shadow:0 0 0 35px #ffffff0a,0 0 0 70px #ffffff08;pointer-events:none}.hero h1{letter-spacing:-1.35px}.hero-mark{position:relative;z-index:1;font-size:64px}.chip{backdrop-filter:blur(8px);border-color:#ffffff4a;background:#ffffff1c}
+.grid{gap:22px;margin-top:24px}.card{border:1px solid #e5e9f4;border-radius:20px;padding:clamp(19px,2.5vw,28px);box-shadow:var(--shadow)}.card h2,.result-head h2{letter-spacing:-.55px}.dropzone{border:1.5px dashed #aeb9e7;background:linear-gradient(180deg,#fafbff,#f5f7ff);border-radius:17px;padding:34px 18px}.dropzone.dragover{background:#eef0ff;border-color:#4357c5}.upload-icon,.step-num{background:#eef0ff;color:#4357c5}.choose{border-color:#d9deef;border-radius:11px;transition:.18s}.choose:hover{border-color:#4357c5;background:#f7f8ff}.primary{background:linear-gradient(100deg,#4357c5,#3547ad);border-radius:11px;box-shadow:0 7px 15px #4357c526;transition:transform .15s,box-shadow .15s}.primary:hover{background:linear-gradient(100deg,#384bb6,#293b99);transform:translateY(-1px);box-shadow:0 10px 20px #4357c533}
+.download{background:#4357c5;border-radius:10px;box-shadow:0 5px 12px #4357c51b}.download.secondary{box-shadow:none}.stat{background:linear-gradient(145deg,#fff,#fafbff);border-color:#e5e9f4;border-radius:15px}.stat-value{color:#263a91}.table-wrap{border-color:#e1e6f1;border-radius:14px;background:white}th{background:#f0f3fb;color:#596681}th,td{border-bottom-color:#e9edf5}tbody tr:hover{background:#f7f8ff}input,select,textarea{border-color:#dce2f0!important;border-radius:8px}input:focus,select:focus,textarea:focus{outline:2px solid #cdd4ff;outline-offset:0;border-color:#6476dc!important}footer{color:#8a94aa}
+@media(max-width:760px){.topbar{height:auto;min-height:66px}.hero{border-radius:19px}.hero:after{right:-110px}.wrap{margin-top:18px}.card{border-radius:16px}}
+</style>
+
+</head>
+<body>
+  <div class="topbar"><div class="nav"><div class="logo">B</div><div><div class="brand-name">Bank Statement Reader</div><div class="brand-sub">Ekstraksi mutasi rekening</div></div><div class="nav-right"><span>Login: {{ session.get('office_user', '') }}</span><a class="nav-link" href="{{ url_for('index') }}">Beranda</a><form class="logout-form" method="post" action="{{ url_for('logout') }}"><button class="logout-btn" type="submit">Keluar</button></form></div></div></div>
+  <main class="wrap">
+    <header class="hero"><div><div class="eyebrow">Tools untuk operasional keuangan</div><h1>Ubah mutasi rekening<br>jadi data yang siap diolah.</h1><p>Unggah rekening koran atau mutasi dalam format PDF maupun gambar. Sistem akan membantu mengekstrak transaksi agar lebih mudah diperiksa dan diekspor.</p><div class="bank-chips"><span class="chip">BCA</span><span class="chip">Mandiri</span><span class="chip">BNI</span><span class="chip">OCR dokumen scan</span></div></div><div class="hero-mark" aria-hidden="true">▤</div></header>
+    {% with messages=get_flashed_messages() %}{% if messages %}{% for message in messages %}<div class="alert">{{ message }}</div>{% endfor %}{% endif %}{% endwith %}
+    <div class="grid">
+      <section class="card"><h2>Unggah dokumen</h2><p class="muted">Pilih satu file mutasi rekening untuk mulai memproses.</p>
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+          <div class="dropzone" id="dropzone"><div class="upload-icon">↑</div><div class="drop-title">Tarik file ke area ini</div><div class="muted">atau pilih file dari perangkat Anda</div><label class="choose" for="statement">Pilih file</label><input class="file-input" id="statement" type="file" name="statement" accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff" required><div class="file-name" id="file-name">Belum ada file dipilih</div></div>
+          <button class="primary" id="submit-btn" type="submit">Proses dokumen →</button>
+        </form>
+        <p class="fineprint">Format: PDF, JPG, JPEG, PNG, TIFF · Maksimum 30 MB. Untuk hasil yang akurat, pastikan teks dan angka pada dokumen terbaca jelas.</p>
+      </section>
+      <aside class="card"><h2>Bagaimana cara kerjanya?</h2><p class="muted">Tiga langkah sederhana untuk menyiapkan data transaksi.</p><div class="steps"><div class="step"><div class="step-num">1</div><div><strong>Unggah mutasi</strong><p>Masukkan dokumen PDF atau gambar hasil scan rekening.</p></div></div><div class="step"><div class="step-num">2</div><div><strong>Ekstraksi transaksi</strong><p>Sistem membaca teks dan mengenali tanggal, deskripsi, debit, kredit, serta saldo.</p></div></div><div class="step"><div class="step-num">3</div><div><strong>Periksa dan ekspor</strong><p>Tinjau hasilnya, lalu unduh sebagai Excel atau CSV untuk diproses lebih lanjut.</p></div></div></div><div class="alert">Penting: selalu cocokkan hasil ekstraksi dengan dokumen rekening koran asli sebelum digunakan untuk pelaporan.</div></aside>
+    </div>
+    {% if transactions %}
+    <section class="card results"><div class="result-head"><div><h2>Hasil ekstraksi</h2><p class="muted">{{ transactions|length }} transaksi ditemukan{% if method %} · Metode: {{ method }}{% endif %}</p></div><div class="download-links">{% if downloads.excel %}<a class="download" href="{{ url_for('download',filename=downloads.excel) }}">↓ Unduh Excel</a>{% endif %}{% if downloads.csv %}<a class="download secondary" href="{{ url_for('download',filename=downloads.csv) }}">↓ Unduh CSV</a>{% endif %}</div></div>
+      <div class="stats"><div class="stat"><div class="stat-label">Total transaksi</div><div class="stat-value">{{ transactions|length }}</div></div><div class="stat"><div class="stat-label">Baris perlu ditinjau</div><div class="stat-value">{{ transactions|rejectattr('Review','in',['OK','Approve'])|list|length }}</div></div><div class="stat"><div class="stat-label">Status</div><div class="stat-value" style="color:var(--brand);font-size:17px">Perlu verifikasi</div></div></div>
+      <div id="review-section" style="scroll-margin-top:20px;margin-top:20px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0">Review & Edit Transaksi</h2><p class="muted">Simpan perubahan per transaksi. Setelah di-approve, data transaksi terkunci dan tidak dapat diedit.</p></div><span class="chip" style="background:var(--soft);color:var(--brand);border-color:var(--line)">{{ transactions|length }} transaksi</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;gap:10px;flex-wrap:wrap">
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label><input id="check-all-rows" type="checkbox"> Check all</label><button type="button" id="uncheck-all-rows" class="secondary" style="padding:6px 10px">Uncheck all</button><span id="review-progress"></span></div>
+</div>
+<div class="table-wrap transaction-table-wrap"><table class="transaction-table" style="width:100%;min-width:0;table-layout:fixed"><thead><tr><th style="width:3%">#</th><th style="width:13%">Tanggal</th><th style="width:27%">Deskripsi</th><th style="width:13%">Debit</th><th style="width:13%">Kredit</th><th style="width:13%">Saldo</th><th style="width:10%">Diperiksa</th></tr></thead><tbody>{% for row in transactions %}{% set rid = 'rowform-' ~ loop.index0 %}<tr>
+<td>{{ loop.index }}</td>
+<td><input form="{{ rid }}" name="date" value="{{ row.Date or '' }}" class="transaction-field" style="box-sizing:border-box;min-width:0;width:100%;padding:5px;font-size:12px"></td>
+<td><input form="{{ rid }}" name="description" value="{{ row.Description or '' }}" class="transaction-field" style="box-sizing:border-box;min-width:0;width:100%;padding:5px;font-size:12px"></td>
+<td><input form="{{ rid }}" name="debit" value="{{ row.Debit if row.Debit is not none else '' }}" inputmode="decimal" class="money-input transaction-field" style="box-sizing:border-box;min-width:0;width:100%;text-align:right;padding:5px;font-size:12px"></td>
+<td><input form="{{ rid }}" name="credit" value="{{ row.Credit if row.Credit is not none else '' }}" inputmode="decimal" class="money-input transaction-field" style="box-sizing:border-box;min-width:0;width:100%;text-align:right;padding:5px;font-size:12px"></td>
+<td><input form="{{ rid }}" name="balance" value="{{ row.Balance if row.Balance is not none else '' }}" inputmode="decimal" class="money-input transaction-field" style="box-sizing:border-box;min-width:0;width:100%;text-align:right;padding:5px;font-size:12px"></td>
+<td style="text-align:center"><input type="checkbox" class="row-reviewed" form="{{ rid }}" {% if row.get('Reviewed') %}checked{% endif %}></td>
+<form id="{{ rid }}" method="post" action="{{ url_for('save_row', row_index=loop.index0) }}#review-section" class="row-review-form"></form>
+</tr>{% endfor %}</tbody></table></div>
+<script>
+(function(){
+const table=document.querySelector('.transaction-table'); if(!table)return;
+const all=document.getElementById('check-all-rows'), boxes=[...table.querySelectorAll('.row-reviewed')], progress=document.getElementById('review-progress');
+const uncheckAllButton=document.getElementById('uncheck-all-rows');
+let bulkBusy = false;
+function lock(cb){cb.closest('tr').querySelectorAll('.transaction-field').forEach(x=>{x.readOnly=cb.checked;x.style.background=cb.checked?'#f3f4f6':'';});}
+function update(){let n=boxes.filter(x=>x.checked).length;all.checked=boxes.length>0&&n===boxes.length;all.indeterminate=n>0&&n<boxes.length;progress.textContent=n+' / '+boxes.length+' diperiksa';}
+async function save(cb){
+  const f=document.getElementById(cb.getAttribute('form')); if(!f)return false;
+  const data=new FormData(f);
+  table.querySelectorAll('[form="'+f.id+'"]').forEach(el=>{
+    if(el.name && el.type!=='checkbox'){
+      let value=el.value;
+      if(el.classList.contains('money-input')) value=value.replace(/,/g,'').trim();
+      data.set(el.name,value);
+    }
+  });
+  data.set('reviewed',cb.checked?'yes':'no');
+  try {
+    const response=await fetch(f.action.split('#')[0], {
+      method:'POST', body:data, credentials:'same-origin',
+      headers:{'X-Requested-With':'XMLHttpRequest'}
+    });
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    return true;
+  } catch(error) {
+    progress.textContent='Gagal menyimpan status. Coba lagi.';
+    return false;
+  }
+}
+boxes.forEach(cb=>{lock(cb);cb.addEventListener('change',async()=>{
+  lock(cb);update();
+  const ok=await save(cb);
+  if(!ok){cb.checked=!cb.checked;lock(cb);update();}
+});});
+all.addEventListener('change',async()=>{
+  if(bulkBusy)return;
+  bulkBusy=true; all.disabled=true;
+  const target=all.checked;
+  const changed=boxes.filter(cb=>cb.checked!==target);
+  progress.textContent='Menyimpan 0 / '+changed.length+'…';
+  let done=0;
+  // Save sequentially to avoid concurrent writes to the same job JSON file.
+  for(const cb of changed){
+    cb.checked=target; lock(cb); update();
+    const ok=await save(cb);
+    if(!ok){cb.checked=!target;lock(cb);}
+    done++;
+    progress.textContent='Menyimpan '+done+' / '+changed.length+'…';
+  }
+  update(); all.disabled=false; bulkBusy=false;
+});
+uncheckAllButton.addEventListener('click',async()=>{
+  if(bulkBusy)return;
+  bulkBusy=true; all.disabled=true; uncheckAllButton.disabled=true;
+  const changed=boxes.filter(cb=>cb.checked);
+  progress.textContent='Membatalkan centang 0 / '+changed.length+'…';
+  let done=0;
+  for(const cb of changed){
+    cb.checked=false; lock(cb); update();
+    const ok=await save(cb);
+    if(!ok){cb.checked=true;lock(cb);}
+    done++;
+    progress.textContent='Membatalkan centang '+done+' / '+changed.length+'…';
+  }
+  update(); all.disabled=false; uncheckAllButton.disabled=false; bulkBusy=false;
+});
+update();
+})();
+</script></div>
+      <p class="result-note">Nominal ditampilkan dengan pemisah ribuan, misalnya 1.250.000,50. Saat mengedit, Anda dapat mengetik angka biasa; format akan diterapkan kembali ketika keluar dari kolom. Setelah disimpan, file Excel dan CSV diperbarui. Selalu cocokkan hasil dengan dokumen rekening koran asli sebelum digunakan.</p>
+    </section>
+    {% endif %}
+    <footer>Bank Statement Reader · Dokumen sumber dihapus setelah pemrosesan, tetapi file hasil unduhan dapat tersimpan di server hingga dibersihkan.</footer>
+  </main>
+  <script>
+    // Format nominal Indonesia. Nilai awal dari server menggunakan format angka standar
+    // (contoh 1250000.5), sedangkan tampilan menggunakan 1.250.000,50.
+    const moneyInputs = [...document.querySelectorAll('#review-section input.money-input')];
+
+    function parseDisplayedMoney(value) {
+      let v = String(value ?? '').trim().replace(/\s/g, '');
+      if (!v) return '';
+      if (v.includes(',') && v.includes('.')) {
+        if (v.lastIndexOf('.') > v.lastIndexOf(',')) v = v.replace(/,/g, '');
+        else v = v.replace(/\./g, '').replace(',', '.');
+      } else if (v.includes(',')) {
+        const parts = v.split(',');
+        if (parts.length > 1 && parts.slice(1).every(part => part.length === 3) && /^\-?\d+$/.test(parts[0])) v = parts.join('');
+        else if (parts.length === 2) v = parts[0] + '.' + parts[1];
+        else v = parts.join('');
+      } else if ((v.match(/\./g) || []).length > 1) {
+        v = v.replace(/\./g, '');
+      }
+      v = v.replace(/[^0-9.-]/g, '');
+      const sign = v.startsWith('-') ? '-' : '';
+      v = v.replace(/-/g, '');
+      const parts = v.split('.');
+      return sign + (parts.shift() || '0') + (parts.length ? '.' + parts.join('') : '');
+    }
+
+    function formatMoney(value) {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      const normalized = parseDisplayedMoney(raw);
+      if (!normalized) return '';
+      const n = Number(normalized);
+      if (!Number.isFinite(n)) return raw;
+      return new Intl.NumberFormat('en-US', {
+        useGrouping: true,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(n);
+    }
+
+    moneyInputs.forEach(el => {
+      el.inputMode = 'decimal';
+      // Nilai awal dari server adalah angka standar; jangan menghapus titik desimalnya.
+      el.value = formatMoney(el.value);
+      el.addEventListener('focus', () => {
+        el.value = parseDisplayedMoney(el.value);
+        el.select();
+      });
+      el.addEventListener('blur', () => {
+        const parsed = parseDisplayedMoney(el.value);
+        el.value = parsed === '' ? '' : formatMoney(parsed);
+      });
+    });
+
+    document.querySelectorAll('.row-review-form').forEach(rowForm => {
+      rowForm.addEventListener('submit', () => {
+        // Inputs are in table cells outside the form and associated via the HTML form attribute.
+        // Query by form ID so formatted values are normalized before submission.
+        document.querySelectorAll('[form="' + rowForm.id + '"].money-input').forEach(el => {
+          if (!el.readOnly) el.value = parseDisplayedMoney(el.value);
+        });
+      });
+    });
+
+    const input=document.getElementById('statement'),drop=document.getElementById('dropzone'),fileName=document.getElementById('file-name'),form=document.getElementById('upload-form'),button=document.getElementById('submit-btn');
+    function showFile(file){fileName.textContent=file?`${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`:'Belum ada file dipilih';}
+    input.addEventListener('change',()=>showFile(input.files[0]));
+    ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.add('dragover')}));
+    ['dragleave','drop'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.remove('dragover')}));
+    drop.addEventListener('drop',e=>{const files=e.dataTransfer.files;if(files.length){input.files=files;showFile(files[0]);}});
+    form.addEventListener('submit',()=>{button.disabled=true;button.textContent='Sedang memproses dokumen…';});
+  </script>
+
+<script>
+(function () {
+  const table = document.querySelector('.transaction-table');
+  if (!table) return;
+  const timers = new WeakMap();
+  const busy = new WeakSet();
+
+  function statusFor(form) {
+    let status = form.querySelector('.autosave-status');
+    if (!status) {
+      status = document.createElement('span');
+      status.className = 'autosave-status';
+      status.style.cssText = 'font-size:11px;color:#64748b;align-self:center';
+      form.appendChild(status);
+    }
+    return status;
+  }
+
+  function rowFormFor(input) {
+    const formId = input.getAttribute('form');
+    return formId ? document.getElementById(formId) : input.closest('form');
+  }
+
+  async function saveRow(input) {
+    const form = rowFormFor(input);
+    if (!form || busy.has(form)) return;
+    busy.add(form);
+    const status = statusFor(form);
+    status.textContent = 'Menyimpan…';
+    try {
+      // Ensure numeric display values are converted from US display format
+      // (1,000,000.00) to plain decimal before sending to Flask.
+      form.querySelectorAll('input[name="date"], input[name="description"], input[name="debit"], input[name="credit"], input[name="balance"]').forEach(el => {
+        const external = table.querySelectorAll('[form="' + form.id + '"]');
+        const field = [...external].find(x => x.name === el.name);
+        const source = field || el;
+        if (source.classList.contains('money-input')) {
+          source.value = source.value.replace(/,/g, '').trim();
+        }
+      });
+      const data = new FormData(form);
+      // Include controls associated with the form but located outside it.
+      table.querySelectorAll('[form="' + form.id + '"]').forEach(el => {
+        if (el.name && el.type !== 'checkbox') {
+          let value = el.value;
+          if (el.classList.contains('money-input')) value = value.replace(/,/g, '').trim();
+          data.set(el.name, value);
+        }
+      });
+      const checkbox = table.querySelector('.row-reviewed[form="' + form.id + '"]');
+      if (checkbox) data.set('reviewed', checkbox.checked ? 'yes' : 'no');
+      const response = await fetch(form.action.split('#')[0], {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      status.textContent = 'Tersimpan';
+    } catch (err) {
+      status.textContent = 'Gagal menyimpan';
+    } finally {
+      busy.delete(form);
+    }
+  }
+
+  function queueSave(input) {
+    const form = rowFormFor(input);
+    if (!form) return;
+    const status = statusFor(form);
+    status.textContent = 'Belum disimpan';
+    if (timers.has(form)) clearTimeout(timers.get(form));
+    timers.set(form, setTimeout(() => saveRow(input), 650));
+  }
+
+  table.querySelectorAll('input.transaction-field, input.money-input').forEach(input => {
+    input.addEventListener('input', () => queueSave(input));
+    input.addEventListener('change', () => {
+      if (timers.has(rowFormFor(input))) clearTimeout(timers.get(rowFormFor(input)));
+      saveRow(input);
+    });
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (timers.has(rowFormFor(input))) clearTimeout(timers.get(rowFormFor(input)));
+        saveRow(input);
+        input.blur();
+      }
+    });
+  });
+})();
+</script>
+
+</body></html>
