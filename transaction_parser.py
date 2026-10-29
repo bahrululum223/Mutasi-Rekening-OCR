@@ -354,7 +354,7 @@ def parse_bni_scan(text):
 
 
 # Universal fallback helpers. These heuristics intentionally flag uncertain rows for review.
-DATE_TOKEN = r"(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}\s+[A-Za-zÀ-ÿ]{3,12}\s+\d{2,4})"
+DATE_TOKEN = r"(?:\d{8}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}\s+[A-Za-zÀ-ÿ]{3,12}\s+\d{2,4})"
 DATE_LINE_RE = re.compile(r"^\s*(" + DATE_TOKEN + r")\b\s*(.*)$", re.I)
 AMOUNT_RE = re.compile(r"(?<![\w/])(?:\(?-?\s*(?:\d{1,3}(?:[.,\s]\d{3})+|\d+)(?:[.,]\d{1,6})?\)?)(?:\s*(?:DB|DR|CR|D|C))?(?!\w)", re.I)
 MONTHS = {
@@ -368,6 +368,11 @@ MONTHS = {
 
 def _parse_flexible_date(raw, year_hint):
     value = re.sub(r"\s+", " ", (raw or "").strip().strip(":"))
+    if re.fullmatch(r"\d{8}", value):
+        try:
+            return datetime.strptime(value, "%Y%m%d").date().isoformat()
+        except ValueError:
+            pass
     for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%d/%m/%Y", "%d-%m-%Y",
                 "%m/%d/%Y", "%d.%m.%Y", "%d/%m/%y", "%d-%m-%y", "%d.%m.%y"):
         try:
@@ -553,6 +558,181 @@ def parse_universal(text, year):
     return deduped
 
 
+
+
+def parse_cimb_statement(text):
+    """Parse CIMB Niaga account statements where transaction rows use DD/MM dates."""
+    rows = []
+    money = re.compile(r'(?<![\d/])(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}(?!\d)')
+    year = statement_year(text)
+    opening_match = re.search(r'SALDO\s+AWAL\s+([\d,]+\.\d{2})', text, re.I)
+    previous_balance = float(opening_match.group(1).replace(',', '')) if opening_match else None
+    current = None
+
+    def finish(item):
+        nonlocal previous_balance
+        if not item:
+            return
+        raw = " ".join(item["lines"])
+        vals = [float(v.replace(",", "")) for v in money.findall(raw)]
+        if not vals:
+            return
+        # In the source statement, each transaction line contains its non-empty
+        # debit/credit amount and final balance; continuation lines carry references.
+        balance = vals[-1]
+        amount = vals[-2] if len(vals) >= 2 else None
+        if amount is None:
+            return
+        delta = round(balance - previous_balance, 2) if previous_balance is not None else None
+        debit = credit = None
+        review = "Perlu diperiksa"
+        if delta is not None:
+            if delta < -0.005:
+                debit = abs(delta)
+            elif delta > 0.005:
+                credit = delta
+            if abs(abs(delta) - amount) <= 0.03:
+                review = "OK"
+            else:
+                review = "Perlu diperiksa: nominal tidak cocok dengan saldo"
+        desc = re.sub(r'\s+', ' ', money.sub(' ', raw)).strip(' -:|')
+        desc = re.sub(r'\b(?:MISCELLANEOUS CHARGES|REMITTANCE CR - SKN|INCOMING SKN|BILL PAYMENT|TR TO REMITT)\b', ' ', desc, flags=re.I)
+        desc = re.sub(r'\s+', ' ', desc).strip(' -:|')
+        d, m = map(int, item["date"].split('/'))
+        try: iso_date = date(year, m, d).isoformat()
+        except ValueError: iso_date = item["date"]
+        rows.append({"Date": iso_date, "Description": desc or "(deskripsi tidak terbaca)",
+                     "Debit": debit, "Credit": credit, "Balance": balance, "Review": review})
+        previous_balance = balance
+
+    for raw_line in text.splitlines():
+        line = re.sub(r'\s+', ' ', raw_line).strip()
+        if not line:
+            continue
+        if re.match(r'^(TOTAL|SALDO AKHIR|DISCLAIMER|TERIMA KASIH|THANK YOU|HALAMAN|PAGE)\b', line, re.I):
+            finish(current); current = None
+            continue
+        m = re.match(r'^(\d{2})/(\d{2})\s+(\d{2})/(\d{2})\s+(.*)$', line)
+        if m:
+            finish(current)
+            current = {"date": f"{m.group(1)}/{m.group(2)}", "lines": [m.group(5)]}
+        elif current and not re.match(r'^(TGL\.?\s*TXN|TXN\.?\s*DATE|TGL\.?\s*VALUTA|DESCRIPTION|DEBET|DEBIT|KREDIT|CREDIT|SALDO|BALANCE)\b', line, re.I):
+            current["lines"].append(line)
+    finish(current)
+    return rows
+
+
+def parse_jtrust_statement(text):
+    """Parse J Trust statement rows with YYYYMMDD dates and separate debit/credit columns."""
+    money = re.compile(r'(?<![\d/])\d[\d,]*\.\d{2}(?!\d)')
+    rows, current = [], None
+    year_hint = statement_year(text)
+    opening_match = re.search(r"SALDO\s+AWAL\s+([\d,]+\.\d{2})", text, re.I)
+    opening_balance = float(opening_match.group(1).replace(",", "")) if opening_match else None
+
+    def finish(item):
+        if not item:
+            return
+        raw = " ".join(item["lines"])
+        vals = [float(x.replace(",", "")) for x in money.findall(raw)]
+        if len(vals) < 2:
+            return
+        # J Trust layout: description/reference, debit, credit, balance.
+        # Empty debit/credit cells collapse in extracted text, so use balance movement
+        # to classify the amount after the first row.
+        amount, balance = vals[-2], vals[-1]
+        rows.append({
+            "Date": _parse_flexible_date(item["date"], year_hint),
+            "Description": re.sub(r"\s+", " ", money.sub(" ", raw)).strip(" -:") or "(deskripsi tidak terbaca)",
+            "Debit": None, "Credit": None, "Balance": balance,
+            "Review": "Perlu diperiksa",
+            "_amount": amount
+        })
+
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line:
+            continue
+        if re.search(r"\bSALDO AWAL\b", line, re.I):
+            continue
+        if re.search(r"\bSALDO AKHIR\b", line, re.I):
+            finish(current); current = None
+            continue
+        m = re.match(r"^(\d{8})\s+(\d{8})\s+(.*)$", line)
+        if m:
+            finish(current)
+            current = {"date": m.group(1), "lines": [m.group(3)]}
+        elif current and not re.match(r"^(TANGGAL|VALUTA|KETERANGAN|NOMOR REFERENSI|MUTASI DEBET|MUTASI KREDIT|SALDO|HALAMAN|PERIODE|CATATAN)\b", line, re.I):
+            current["lines"].append(line)
+    finish(current)
+
+    prev_balance = opening_balance
+    for row in rows:
+        amount, balance = row.pop("_amount"), row["Balance"]
+        if prev_balance is not None and balance is not None:
+            delta = round(balance - prev_balance, 2)
+            if delta < -0.005:
+                row["Debit"] = abs(delta)
+            elif delta > 0.005:
+                row["Credit"] = delta
+            else:
+                row["Review"] = "Perlu diperiksa: mutasi tidak terdeteksi"
+            if abs(abs(delta) - amount) > 0.02:
+                row["Review"] = "Perlu diperiksa: nominal berbeda dari perubahan saldo"
+            else:
+                row["Review"] = "OK"
+        else:
+            row["Review"] = "Perlu diperiksa: saldo sebelumnya tidak tersedia"
+        prev_balance = balance
+    return rows
+
+
+def parse_bri_ocr(text):
+    """Parse scanned BRI financial transaction statements after OCR."""
+    rows = []
+    # OCR commonly preserves a transaction as date/time, description, debit, credit, balance.
+    line_re = re.compile(r'^(\d{2}/\d{2}/\d{2,4})\s+(\d{2}:\d{2}:\d{2})\s+(.*)$')
+    money = re.compile(r'(?<![\w/])(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}(?!\d)')
+    year = statement_year(text)
+    current = None
+
+    def finish(item):
+        if not item:
+            return
+        raw = " ".join(item["lines"])
+        vals = [float(x.replace(",", "")) for x in money.findall(raw)]
+        if len(vals) < 3:
+            return
+        debit_amt, credit_amt, balance = vals[-3], vals[-2], vals[-1]
+        desc = money.sub(" ", raw)
+        desc = re.sub(r'\b\d{6,}\b', ' ', desc)
+        desc = re.sub(r'\s+', ' ', desc).strip(" -:")
+        try:
+            txn_date = datetime.strptime(item["date"] + " " + item["time"], "%d/%m/%y %H:%M:%S").date().isoformat()
+        except ValueError:
+            try: txn_date = datetime.strptime(item["date"] + " " + item["time"], "%d/%m/%Y %H:%M:%S").date().isoformat()
+            except ValueError: txn_date = item["date"]
+        debit = debit_amt if debit_amt > 0 else None
+        credit = credit_amt if credit_amt > 0 else None
+        rows.append({"Date": txn_date, "Description": desc or "(deskripsi tidak terbaca)",
+                     "Debit": debit, "Credit": credit, "Balance": balance,
+                     "Review": "Perlu diperiksa"})
+
+    for raw_line in text.splitlines():
+        line = re.sub(r'\s+', ' ', raw_line).strip()
+        if (re.search(r'SALDO AWAL.*TOTAL TRANSAKSI|TOTAL TRANSAKSI.*SALDO AKHIR', line, re.I)
+                or re.match(r'^(SALDO AWAL|OPENING BALANCE|TOTAL TRANSAKSI|TOTAL DEBIT|TOTAL KREDIT|SALDO AKHIR|CLOSING BALANCE|TERBILANG|HALAMAN|PAGE)\b', line, re.I)):
+            finish(current); current = None
+            continue
+        m = line_re.match(line)
+        if m:
+            finish(current)
+            current = {"date": m.group(1), "time": m.group(2), "lines": [m.group(3)]}
+        elif current:
+            current["lines"].append(line)
+    finish(current)
+    return rows
+
 def parse_transactions(text, filepath=None):
     year = statement_year(text)
     rows = []
@@ -563,7 +743,19 @@ def parse_transactions(text, filepath=None):
                   re.search(r"MUTASI DB", text, re.I))
     is_mandiri = bool(re.search(r"TRANSACTION INQUIRY", text, re.I) and
                       re.search(r"Date\s*&\s*Time", text, re.I))
-    if is_bni:
+    is_jtrust = bool(re.search(r"JTRUST|J TRUST BANK|MUTASI DEBET.*MUTASI KREDIT", text, re.I | re.S)
+                     and re.search(r"\b\d{8}\s+\d{8}\s+", text))
+    is_bri = bool(re.search(r"BRITAMA BISNIS|LAPORAN TRANSAKSI FINANSIAL|STATEMENT OF FINANCIAL TRANSACTION", text, re.I)
+                  and re.search(r"\d{2}/\d{2}/\d{2,4}\s+\d{2}:\d{2}:\d{2}", text))
+    is_cimb = bool(re.search(r"CIMB NIAGA|LAPORAN TRANSAKSI", text, re.I)
+                   and re.search(r"TXN\.\s*DATE.*DESCRIPTION.*DEBIT.*CREDIT.*BALANCE", text, re.I | re.S))
+    if is_jtrust:
+        rows = parse_jtrust_statement(text)
+    elif is_cimb:
+        rows = parse_cimb_statement(text)
+    elif is_bri:
+        rows = parse_bri_ocr(text)
+    elif is_bni:
         rows = parse_bni_scan(text)
     elif filepath and os.path.splitext(filepath)[1].lower() == ".pdf" and is_bca:
         rows = parse_bca_pdf(filepath, text)

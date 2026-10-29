@@ -120,3 +120,11 @@ Toolbar pemeriksaan menyediakan tombol `Check all` dan `Uncheck all`. Keduanya m
 - Baris yang ambigu tetap berstatus perlu diperiksa; hasil wajib dibandingkan dengan dokumen sumber sebelum dipakai sebagai data final.
 
 **Batasan:** Tidak ada parser OCR yang bisa menjamin semua format bank tanpa kesalahan. PDF teks, PDF hasil scan, kolom tanpa label, tanggal ambigu, dan layout khusus dapat memerlukan parser khusus atau koreksi manual. Untuk produksi, validasi setiap bank dan simpan contoh dokumen uji yang representatif.
+
+
+## Multi-format statement parsing (v41)
+- Added J Trust statements with YYYYMMDD transaction dates and separate debit/credit columns.
+- Added scanned BRI financial transaction statements using OCR date/time rows and debit/credit/balance values.
+- Kept the BNI scanned-statement parser and generalized date/amount fallback.
+- PDF text extraction uses reading-order sorting to improve table row sequencing (including CIMB Niaga statements).
+- Documents with no transaction rows (only opening/closing balance) will not produce fabricated transactions; the user should be informed that the statement contains no transaction details.

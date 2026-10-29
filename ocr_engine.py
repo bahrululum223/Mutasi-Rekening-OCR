@@ -26,7 +26,7 @@ def extract_document(filepath):
         text_pages = 0
         with pymupdf.open(filepath) as doc:
             for page in doc:
-                text = page.get_text("text")
+                text = page.get_text("text", sort=True)
                 if len(text.strip()) > 30:
                     page_texts.append(text)
                     text_pages += 1
