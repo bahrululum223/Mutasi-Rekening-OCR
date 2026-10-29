@@ -38,6 +38,66 @@ body{background:radial-gradient(ellipse at 15% 0%,#e9edff 0,transparent 34%),var
 @media(max-width:760px){.topbar{height:auto;min-height:66px}.hero{border-radius:19px}.hero:after{right:-110px}.wrap{margin-top:18px}.card{border-radius:16px}}
 </style>
 
+
+<style id="workspace-redesign-v35">
+/* v35: structural redesign — workspace sidebar, compact page heading, editorial cards */
+:root{--ink:#20272f;--muted:#77818b;--line:#e5e4df;--bg:#f4f3ef;--brand:#176b5b;--brand2:#105344;--soft:#e7f2ed;--white:#fff;--shadow:0 2px 5px rgba(25,34,29,.035)}
+*{box-sizing:border-box}
+body{background:#f4f3ef;color:var(--ink);font-family:Inter,"Segoe UI",system-ui,sans-serif}
+.topbar{position:fixed;inset:0 auto 0 0;width:236px;height:100vh;background:#202c2a;color:#f8faf9;border:0;box-shadow:5px 0 24px #17211d0a;z-index:20;align-items:stretch}
+.nav{height:100%;width:100%;padding:27px 18px 22px;display:flex;flex-direction:column;align-items:stretch;gap:0}
+.logo{height:43px;width:43px;flex-shrink:0;border-radius:13px;background:#d7eee4;color:#175b4b;box-shadow:none;font-size:22px}
+.brand-name{color:#fff;font-size:14px;letter-spacing:-.2px;margin-top:-43px;margin-left:55px;min-height:43px;display:flex;align-items:center}
+.brand-sub{color:#a6b8b0;margin-left:55px;font-size:11px;margin-top:-12px;margin-bottom:38px}
+.nav-right{margin:0;display:flex;flex-direction:column;align-items:stretch;gap:0;color:#b7c5bf;font-size:12px;overflow-wrap:anywhere}
+.nav-right>span{display:block;padding:13px 10px;border-top:1px solid #ffffff17;border-bottom:1px solid #ffffff17;margin-bottom:20px;color:#c8d3ce}
+.nav-link{display:block;color:#e9f5ef;text-decoration:none;padding:12px 13px;border-radius:9px;background:#ffffff12;margin-bottom:8px}
+.logout-form{margin-top:auto;padding-top:12px;border-top:1px solid #ffffff17}
+.logout-btn{width:100%;text-align:left;background:#ffffff0b;border-color:#ffffff20;color:#e8efeb;padding:11px 13px;border-radius:9px}
+.wrap{max-width:none;width:auto;margin:0 0 0 236px;padding:34px clamp(22px,4vw,58px) 45px}
+.hero{background:transparent;color:var(--ink);border-radius:0;box-shadow:none;padding:9px 0 25px;border-bottom:1px solid #deded7;display:flex;align-items:flex-end;gap:20px;position:relative;overflow:visible}
+.hero:after{display:none}.hero .eyebrow{color:#287a65;letter-spacing:1.8px;font-size:10px}
+.hero h1{font-size:clamp(30px,3.2vw,43px);font-weight:760;line-height:1.08;letter-spacing:-1.7px;margin:10px 0 11px;max-width:680px}
+.hero p{color:#68736d;max-width:680px;font-size:14px}
+.hero-mark{height:90px;width:90px;border-radius:24px;background:#e3ece5;color:#176b5b;display:grid;place-items:center;font-size:42px;opacity:1;margin-left:auto;flex-shrink:0}
+.bank-chips{margin-top:18px}.chip{background:#e8eee8;border:1px solid #dce5dd;color:#52665c;border-radius:6px;padding:5px 9px;font-size:10px;letter-spacing:.4px;text-transform:uppercase}
+.grid{grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:16px;margin-top:25px;align-items:stretch}
+.card{border:1px solid #e2e1da;border-radius:14px;padding:25px;background:#fff;box-shadow:var(--shadow)}
+.card h2,.result-head h2{font-size:17px;font-weight:750;letter-spacing:-.45px}
+.card .muted{line-height:1.6}
+.dropzone{border:1px dashed #b5c7bc;background:#f8faf7;border-radius:10px;padding:30px 18px;margin-top:22px}
+.dropzone.dragover{background:#e7f2ed;border-color:#176b5b}
+.upload-icon{height:44px;width:44px;border-radius:12px;background:#e4f0e8;color:#176b5b;font-size:22px}
+.choose{border-radius:7px;background:#fff;border-color:#d8dfd8;padding:10px 15px}
+.primary{background:#176b5b;box-shadow:none;border-radius:7px;padding:13px 16px;letter-spacing:.1px}
+.primary:hover{background:#105344;transform:none;box-shadow:none}
+.steps{gap:0;margin-top:24px}
+.step{padding:0 0 20px;position:relative;gap:12px}
+.step:not(:last-child):after{content:"";position:absolute;left:15px;top:34px;bottom:4px;width:1px;background:#dfe6df}
+.step-num{height:31px;width:31px;border-radius:50%;background:#e5eee7;color:#176b5b;font-size:12px;z-index:1}
+.step strong{font-size:13px}.step p{font-size:12px;line-height:1.55}
+.alert{border-radius:8px}
+.results{margin-top:20px;padding:25px 0 0;border:0;background:transparent;box-shadow:none}
+.result-head{padding:0 0 15px;border-bottom:1px solid #deded7;align-items:center}
+.result-head h2{font-size:22px}.download{background:#176b5b;border-radius:7px;box-shadow:none;padding:10px 13px}.download.secondary{background:#fff;border-color:#dcded7}
+.stats{gap:0;background:#fff;border:1px solid #e2e1da;border-radius:12px;margin:17px 0;overflow:hidden}
+.stat{border:0;border-radius:0;padding:17px 20px;background:#fff}.stat+.stat{border-left:1px solid #e8e7e1}
+.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px}.stat-value{font-size:24px;color:#176b5b;letter-spacing:-.8px}
+#review-section{background:#fff;border:1px solid #e2e1da;border-radius:13px;padding:20px;margin-top:17px!important}
+#review-section h2{font-size:18px}
+.table-wrap{border:1px solid #e5e5df;border-radius:8px}
+th{background:#f2f4f0;color:#647168;font-size:10px;letter-spacing:.8px}
+th,td{border-bottom-color:#ecece6}
+tbody tr:hover{background:#f7faf7}
+.transaction-table input{border:1px solid #e1e6df!important;border-radius:5px!important;background:#fff}
+.transaction-table input:read-only{background:#f0f2ef!important;color:#758078}
+#check-all-rows{accent-color:#176b5b}.result-note{line-height:1.65}
+footer{text-align:left;border-top:1px solid #e0dfd8;padding-top:17px;color:#8a928b;font-size:11px}
+@media(max-width:900px){.topbar{width:200px}.nav{padding:22px 14px}.wrap{margin-left:200px;padding:26px 20px 36px}.grid{grid-template-columns:1fr}.hero-mark{height:70px;width:70px}}
+@media(max-width:640px){.topbar{position:relative;inset:auto;width:100%;height:auto;min-height:0}.nav{height:auto;display:grid;grid-template-columns:43px 1fr;grid-template-rows:auto auto;padding:14px 16px;align-items:center;gap:0 11px}.logo{grid-column:1;grid-row:1;width:39px;height:39px}.brand-name{grid-column:2;grid-row:1;margin:0;min-height:0;display:block;font-size:13px;align-self:end}.brand-sub{grid-column:2;grid-row:1;margin:19px 0 0;font-size:10px}.nav-right{grid-column:1/-1;grid-row:2;flex-direction:row;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}.nav-right>span{border:0;margin:0;padding:5px 0;flex:1;min-width:100%;font-size:11px}.nav-link{padding:7px 9px;margin:0}.logout-form{margin:0;padding:0;border:0}.logout-btn{padding:7px 9px;width:auto}.wrap{margin:0;padding:23px 14px 30px}.hero{padding:0 0 20px;align-items:flex-start}.hero h1{font-size:31px;letter-spacing:-1.2px}.hero-mark{display:none}.bank-chips{gap:5px}.grid{margin-top:16px;gap:13px}.card{padding:18px}.dropzone{padding:25px 12px}.results{padding-top:8px}.stats{grid-template-columns:1fr}.stat{padding:13px 16px}.stat+.stat{border-left:0;border-top:1px solid #e8e7e1}#review-section{padding:13px;margin-top:13px!important}.result-head{display:block}.download-links{margin-top:12px}footer{margin-top:22px}}
+
+</style>
+
 </head>
 <body>
   <div class="topbar"><div class="nav"><div class="logo">B</div><div><div class="brand-name">Bank Statement Reader</div><div class="brand-sub">Ekstraksi mutasi rekening</div></div><div class="nav-right"><span>Login: {{ session.get('office_user', '') }}</span><a class="nav-link" href="{{ url_for('index') }}">Beranda</a><form class="logout-form" method="post" action="{{ url_for('logout') }}"><button class="logout-btn" type="submit">Keluar</button></form></div></div></div>
